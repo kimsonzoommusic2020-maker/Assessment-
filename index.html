@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Level 1: Gold Edition</title>
+    <script src="https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <script src="https://unpkg.com/@tonejs/midi"></script>
+    <script src="https://unpkg.com/tone"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; min-height: 100vh; justify-content: space-between; }
+        #staff-container { background: white; padding: 15px; border-radius: 20px; margin-top: 15px; box-shadow: 0 0 40px rgba(241, 196, 15, 0.3); width: 95%; max-width: 850px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; }
+        #status { font-size: 1.4rem; color: #f1c40f; margin-top: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(241, 196, 15, 0.3); text-align: center; }
+        .row-div { min-height: 130px; width: 100%; display: flex; justify-content: center; }
+        #victory-screen {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #000; color: #f1c40f; padding: 40px 50px; border-radius: 30px; border: 6px solid #f1c40f;
+            text-align: center; z-index: 1000; box-shadow: 0 0 100px #f1c40f; width: 80%; max-width: 400px; box-sizing: border-box;
+        }
+
+        #piano-board { 
+            position: relative; 
+            display: inline-flex; 
+            background: #1a1a1a; 
+            padding: 20px 10px; 
+            border-radius: 12px; 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 3px 0 #333;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            border-top: 4px solid #555;
+            overflow-x: auto;
+            max-width: 100%;
+            touch-action: manipulation;
+        }
+        .white-key { 
+            width: 45px; 
+            height: 170px; 
+            background: linear-gradient(to bottom, #fff 0%, #ebebeb 85%, #f5f5f5 100%); 
+            border: 1px solid #bbb; 
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            box-shadow: 0 4px 5px rgba(0,0,0,0.3), inset 0 5px 0 #fff;
+            cursor: pointer;
+            z-index: 1;
+            transition: background 0.05s;
+            flex-shrink: 0;
+        }
+        .white-key:active { 
+            background: linear-gradient(to bottom, #e0e0e0 0%, #ccc 100%); 
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.3), 0 2px 2px rgba(0,0,0,0.2);
+        }
+        .black-key { 
+            width: 26px; 
+            height: 105px; 
+            background: linear-gradient(to bottom, #111 0%, #333 100%); 
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 2px 2px #555;
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+            transition: background 0.05s;
+            flex-shrink: 0;
+        }
+        .black-key:active {
+            background: #111;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status">Line 1 of 3</div>
+
+    <div id="victory-screen">
+        <h1 style="font-size: 3rem; margin: 0;">YOU DID IT !</h1>
+        <p style="font-size: 1.5rem; color: white; margin-top: 10px;">LEVEL COMPLETE</p>
+        <button onclick="location.reload()" style="background: #f1c40f; color: black; margin-top: 20px; border-radius: 50px; padding: 12px 30px; font-weight: bold; border: none; cursor: pointer; font-size: 1rem;">PLAY AGAIN</button>
+    </div>
+
+    <div id="staff-container">
+        <div id="active-line" class="row-div"></div>
+    </div>
+
+    <div id="piano-board">
+        <!-- C4 --> <div class="white-key" onclick="handleVirtualKeyPress(60)"></div>
+        <!-- C#4 --><div class="black-key" onclick="handleVirtualKeyPress(61)" style="left: 43px;"></div>
+        <!-- D4 --> <div class="white-key" onclick="handleVirtualKeyPress(62)"></div>
+        <!-- D#4 --><div class="black-key" onclick="handleVirtualKeyPress(63)" style="left: 90px;"></div>
+        <!-- E4 --> <div class="white-key" onclick="handleVirtualKeyPress(64)"></div>
+        <!-- F4 --> <div class="white-key" onclick="handleVirtualKeyPress(65)"></div>
+        <!-- F#4 --><div class="black-key" onclick="handleVirtualKeyPress(66)" style="left: 182px;"></div>
+        <!-- G4 --> <div class="white-key" onclick="handleVirtualKeyPress(67)"></div>
+        <!-- G#4 --><div class="black-key" onclick="handleVirtualKeyPress(68)" style="left: 229px;"></div>
+        <!-- A4 --> <div class="white-key" onclick="handleVirtualKeyPress(69)"></div>
+        <!-- A#4 --><div class="black-key" onclick="handleVirtualKeyPress(70)" style="left: 276px;"></div>
+        <!-- B4 --> <div class="white-key" onclick="handleVirtualKeyPress(71)"></div>
+        <!-- C5 --> <div class="white-key" onclick="handleVirtualKeyPress(72)"></div>
+    </div>
+
+    <script>
+        const melody = [
+            { key: "c/4", midi: 60 }, { key: "c/4", midi: 60 }, { key: "g/4", midi: 67 }, { key: "g/4", midi: 67 }, { key: "a/4", midi: 69 }, { key: "a/4", midi: 69 }, { key: "g/4", midi: 67 },
+            { key: "f/4", midi: 65 }, { key: "f/4", midi: 65 }, { key: "e/4", midi: 64 }, { key: "e/4", midi: 64 }, { key: "d/4", midi: 62 }, { key: "d/4", midi: 62 }, { key: "c/4", midi: 60 },
+            { key: "g/4", midi: 67 }, { key: "g/4", midi: 67 }, { key: "f/4", midi: 65 }, { key: "f/4", midi: 65 }, { key: "e/4", midi: 64 }, { key: "e/4", midi: 64 }, { key: "d/4", midi: 62 },
+            { key: "g/4", midi: 67 }, { key: "g/4", midi: 67 }, { key: "f/4", midi: 65 }, { key: "f/4", midi: 65 }, { key: "e/4", midi: 64 }, { key: "e/4", midi: 64 }, { key: "d/4", midi: 62 },
+            { key: "c/4", midi: 60 }, { key: "c/4", midi: 60 }, { key: "g/4", midi: 67 }, { key: "g/4", midi: 67 }, { key: "a/4", midi: 69 }, { key: "a/4", midi: 69 }, { key: "g/4", midi: 67 },
+            { key: "f/4", midi: 65 }, { key: "f/4", midi: 65 }, { key: "e/4", midi: 64 }, { key: "e/4", midi: 64 }, { key: "d/4", midi: 62 }, { key: "d/4", midi: 62 }, { key: "c/4", midi: 60 }
+        ];
+
+        let currentIndex = 0;
+        let lastMatchTime = 0;
+        const notesPerLine = 14;
+
+        function drawRow(id, notes, offset) {
+            const div = document.getElementById(id);
+            if (!div || !window.Vex) return;
+            div.innerHTML = "";
+            const VF = Vex.Flow;
+            const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+            
+            const containerWidth = Math.min(800, window.innerWidth - 40);
+            renderer.resize(containerWidth, 130);
+            const context = renderer.getContext();
+            const stave = new VF.Stave(5, 5, containerWidth - 10).addClef("treble").setContext(context).draw();
+
+            const vexNotes = notes.map((m, i) => {
+                const idx = offset + i;
+                const note = new VF.StaveNote({ keys: [m.key], duration: "q" });
+                let col = "black";
+                if (idx < currentIndex) col = "#2ecc71";
+                else if (idx === currentIndex) col = "#ff0000";
+                note.setStyle({ fillStyle: col, strokeStyle: col });
+                return note;
+            });
+
+            const voice = new VF.Voice({ num_beats: notes.length, beat_value: 4 });
+            voice.addTickables(vexNotes);
+            new VF.Formatter().joinVoices([voice]).format([voice], containerWidth - 60);
+            voice.draw(context, stave);
+        }
+
+        function drawAll() {
+            const currentLineIndex = Math.floor(currentIndex / notesPerLine);
+            const startIdx = currentLineIndex * notesPerLine;
+            const endIdx = Math.min(startIdx + notesPerLine, melody.length);
+            
+            if (startIdx < melody.length) {
+                drawRow("active-line", melody.slice(startIdx, endIdx), startIdx);
+                document.getElementById('status').innerText = `Line ${currentLineIndex + 1} of 3`;
+            }
+        }
+
+        window.onload = function() {
+            let attempts = 0;
+            const checkVex = setInterval(() => {
+                attempts++;
+                if (window.Vex) {
+                    drawAll();
+                    clearInterval(checkVex);
+                } else if (attempts > 50) {
+                    document.getElementById('status').innerText = "ERROR: Internet Connection Required";
+                    clearInterval(checkVex);
+                }
+            }, 100);
+            window.addEventListener('resize', drawAll);
+        };
+
+        const synth = new Tone.Sampler({
+            urls: {
+                A0: "A0.mp3", C1: "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
+                A1: "A1.mp3", C2: "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
+                A2: "A2.mp3", C3: "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
+                A3: "A3.mp3", C4: "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
+                A4: "A4.mp3", C5: "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
+                A5: "A5.mp3", C6: "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
+                A6: "A6.mp3", C7: "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
+                A7: "A7.mp3", C8: "C8.mp3"
+            },
+            release: 1,
+            baseUrl: "https://tonejs.github.io/audio/salamander/"
+        }).toDestination();
+
+        function playVictorySound() {
+            const now = Tone.now();
+            synth.triggerAttackRelease("C4", "8n", now);
+            synth.triggerAttackRelease("E4", "8n", now + 0.1);
+            synth.triggerAttackRelease("G4", "8n", now + 0.2);
+            synth.triggerAttackRelease("C5", "8n", now + 0.3);
+            synth.triggerAttackRelease("E5", "8n", now + 0.4);
+            synth.triggerAttackRelease("G5", "8n", now + 0.5);
+            synth.triggerAttackRelease("C6", "4n", now + 0.6);
+        }
+
+        function handleVirtualKeyPress(midi) {
+            // Self-start standard browser audio rendering engine on interaction
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+
+            const now = Tone.now();
+            synth.triggerAttackRelease(Tone.Frequency(midi, "midi").toNote(), "8n", now);
+
+            let nowTime = Date.now();
+            if (nowTime - lastMatchTime > 300) { 
+                if (midi === melody[currentIndex].midi) {
+                    currentIndex++;
+                    lastMatchTime = nowTime;
+                    drawAll();
+                    if (currentIndex >= melody.length) {
+                        document.getElementById('victory-screen').style.display = 'block';
+                        document.getElementById('status').innerText = "🏆 COMPLETE 🏆";
+                        playVictorySound();
+                        return;
+                    }
+                }
+            }
+        }
+    </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</body>
+</html>
